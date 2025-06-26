@@ -1,47 +1,53 @@
-name: CI/CD – Micro Product Deploy
+name: CI - Build + Sonar + Docker (estructura con /docker)
 
 on:
   push:
     branches: [ "main" ]
+  pull_request:
   workflow_dispatch:
 
 env:
-  DOCKER_PROJECT_NAME: product_app
-  APP_CONTAINER_NAME: product_app_2025
-  SONAR_PROJECT_KEY: product-app
-  SONAR_HOST_URL: http://localhost:9000
-  SONAR_TOKEN: squ_ecb02096af5f7a1e14f6aa6c63a7718b5a2915fb
+  SONAR_HOST_URL: 'http://127.0.0.1:9100'
+  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  JAVA_VERSION: '17'
 
 jobs:
-  build_analyze_deploy:
+  build-test-analyze-deploy:
     runs-on: self-hosted
 
     steps:
-      - name: 📥 Checkout del código
+      - name: 📥 Clonar código
         uses: actions/checkout@v4
 
-      - name: ☕ Configurar Java 17
+      - name: ☕ Java setup
         uses: actions/setup-java@v4
         with:
-          java-version: 17
-          distribution: temurin
-          cache: maven
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
 
-      - name: ⚙️ Construir el .jar con Maven
-        run: mvn clean package -DskipTests
+      - name: 📦 Compilar JAR (sin tests)
+        run: mvn -B clean package -DskipTests
 
-      - name: 📊 Análisis con SonarQube
+      - name: 🔍 Análisis Sonar
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           mvn sonar:sonar \
-            -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }} \
+            -Dsonar.projectKey=nombre-proyecto \
+            -Dsonar.projectName="Nombre del Proyecto" \
             -Dsonar.host.url=${{ env.SONAR_HOST_URL }} \
             -Dsonar.login=${{ env.SONAR_TOKEN }}
 
-      - name: 🚀 Despliegue con Docker Compose
+      - name: 🐳 Build Docker image (desde carpeta /docker)
+        run: docker build -t amigo/proyecto:1.0.0 -f docker/Dockerfile .
+
+      - name: 🚀 Run Docker container
         run: |
-          echo "🔧 Desplegando aplicación..."
-          cd docker
-          docker-compose -p $DOCKER_PROJECT_NAME down -v --remove-orphans || true
-          docker-compose -p $DOCKER_PROJECT_NAME up -d --build
-          echo "📋 Logs recientes:"
-          docker logs --tail 50 $APP_CONTAINER_NAME
+          docker rm -f amigo-proyecto || true
+          docker run -d \
+            --name amigo-proyecto \
+            -p 8088:8080 \
+            amigo/proyecto:1.0.0
+
+      - name: 📄 Logs del contenedor
+        run: docker logs --tail 100 amigo-proyecto
