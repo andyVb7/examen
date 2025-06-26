@@ -10,7 +10,7 @@ env:
   APP_CONTAINER_NAME: product_app_2025
   SONAR_PROJECT_KEY: product-app
   SONAR_HOST_URL: http://localhost:9000
-  SONAR_TOKEN: squ_d9e2e7dd59a8a2e40ccd3fce9fa673b85db1af47
+  SONAR_TOKEN: squ_ecb02096af5f7a1e14f6aa6c63a7718b5a2915fb
 
 jobs:
   build_analyze_deploy:
